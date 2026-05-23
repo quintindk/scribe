@@ -135,11 +135,12 @@ def list_collections() -> list[dict[str, Any]]:
 
 
 if __name__ == "__main__":
-    transport = os.getenv("SCRIBE_TRANSPORT", "sse")
+    transport = os.getenv("SCRIBE_TRANSPORT", "http")
     host = os.getenv("SCRIBE_HOST", "0.0.0.0")
     port = int(os.getenv("SCRIBE_PORT", "8000"))
-    LOG.info("Starting Scribe (%s) on %s:%s", transport, host, port)
+    path = os.getenv("SCRIBE_PATH", "/mcp" if transport == "http" else "/sse")
+    LOG.info("Starting Scribe (%s) on %s:%s%s", transport, host, port, path)
     if transport == "stdio":
         mcp.run()
     else:
-        mcp.run(transport=transport, host=host, port=port)
+        mcp.run(transport=transport, host=host, port=port, path=path)

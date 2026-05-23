@@ -7,9 +7,10 @@ services:
     network_mode: host
     env_file: .env
     environment:
-      SCRIBE_TRANSPORT: ${SCRIBE_TRANSPORT:-sse}
+      SCRIBE_TRANSPORT: ${SCRIBE_TRANSPORT:-http}
       SCRIBE_HOST: ${SCRIBE_HOST:-0.0.0.0}
       SCRIBE_PORT: ${SCRIBE_PORT:-8000}
+      SCRIBE_PATH: ${SCRIBE_PATH:-/mcp}
       QDRANT_URL: ${QDRANT_URL:-http://localhost:6333}
       CHAMBERLAIN_COLLECTION_PREFIX: ${CHAMBERLAIN_COLLECTION_PREFIX:-chamberlain-}
       OPENAI_COMPATIBLE_API_BASE: ${OPENAI_COMPATIBLE_API_BASE:-http://localhost:1234/v1}
