@@ -1,13 +1,14 @@
 """
-Scribe — The Record Keeper.
+Scribe — a knowledge MCP server backed by Qdrant.
 
-A thin FastMCP server that exposes a single `search_archives` tool. It embeds
-the query via an OpenAI-compatible endpoint (LM Studio nomic) and searches
-across the Chamberlain Qdrant collections written by Miller.
+A thin FastMCP server that exposes a `search_archives` tool and a
+`list_collections` tool. It embeds queries via an OpenAI-compatible endpoint
+(e.g. LM Studio, vLLM, Ollama's OpenAI shim) and searches across one or more
+Qdrant collections whose names share a configurable prefix.
 
-Multi-collection by design: collections matching CHAMBERLAIN_COLLECTION_PREFIX
-are discovered at request time. Pass `collection="all"` to fan out, or a bare
-suffix like `catchpole` (we'll prefix it).
+Multi-collection by design: collections matching COLLECTION_PREFIX are
+discovered at request time. Pass `collection="all"` to fan out, or a bare
+suffix like `repo-x` (the prefix is added automatically).
 """
 
 from __future__ import annotations
@@ -28,7 +29,7 @@ logging.basicConfig(
 
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY") or None
-COLLECTION_PREFIX = os.getenv("CHAMBERLAIN_COLLECTION_PREFIX", "chamberlain-")
+COLLECTION_PREFIX = os.getenv("COLLECTION_PREFIX", "archive-")
 
 EMBED_BASE = os.getenv("OPENAI_COMPATIBLE_API_BASE", "http://localhost:1234/v1")
 EMBED_KEY = os.getenv("OPENAI_COMPATIBLE_API_KEY", "not-needed")
@@ -43,9 +44,9 @@ embedder = OpenAI(base_url=EMBED_BASE, api_key=EMBED_KEY)
 mcp = FastMCP(
     name="scribe",
     instructions=(
-        "Scribe is the Chamberlain knowledge archive. Use `search_archives` "
-        "to retrieve repository chunks (code, docs, configs) indexed from the "
-        "Chamberlain pillars (catchpole, scribe, miller, bailiff, meta)."
+        "Scribe is a knowledge archive over Qdrant. Use `search_archives` to "
+        "retrieve relevant chunks (code, docs, configs) and `list_collections` "
+        "to enumerate what is indexed."
     ),
 )
 
@@ -83,12 +84,13 @@ def search_archives(
     collection: str = "all",
     limit: int = DEFAULT_LIMIT,
 ) -> list[dict[str, Any]]:
-    """Search the Chamberlain archives for relevant chunks.
+    """Search the indexed archives for relevant chunks.
 
     Args:
         query: Natural-language question or keywords.
-        collection: "all" (default) to fan out across every chamberlain-* collection,
-                    a bare pillar name ("catchpole"), or a full collection name.
+        collection: "all" (default) to fan out across every collection matching
+                    the configured prefix, a bare suffix ("repo-x"), or a full
+                    collection name.
         limit: Total chunks to return (capped at SCRIBE_MAX_LIMIT).
 
     Returns:
@@ -124,7 +126,7 @@ def search_archives(
 
 @mcp.tool
 def list_collections() -> list[dict[str, Any]]:
-    """List all Chamberlain collections with point counts."""
+    """List all indexed collections (matching COLLECTION_PREFIX) with point counts."""
     out = []
     for c in qdrant.get_collections().collections:
         if not c.name.startswith(COLLECTION_PREFIX):

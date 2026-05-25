@@ -1,7 +1,7 @@
 services:
   scribe:
     build: .
-    image: chamberlain/scribe:latest
+    image: scribe:latest
     container_name: scribe
     restart: unless-stopped
     network_mode: host
@@ -12,7 +12,7 @@ services:
       SCRIBE_PORT: ${SCRIBE_PORT:-8000}
       SCRIBE_PATH: ${SCRIBE_PATH:-/mcp}
       QDRANT_URL: ${QDRANT_URL:-http://localhost:6333}
-      CHAMBERLAIN_COLLECTION_PREFIX: ${CHAMBERLAIN_COLLECTION_PREFIX:-chamberlain-}
+      COLLECTION_PREFIX: ${COLLECTION_PREFIX:-archive-}
       OPENAI_COMPATIBLE_API_BASE: ${OPENAI_COMPATIBLE_API_BASE:-http://localhost:1234/v1}
       OPENAI_COMPATIBLE_API_KEY: ${OPENAI_COMPATIBLE_API_KEY:-not-needed}
       OPENAI_COMPATIBLE_MODEL: ${OPENAI_COMPATIBLE_MODEL:-text-embedding-nomic-embed-text-v1.5}
