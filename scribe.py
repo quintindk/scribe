@@ -129,14 +129,22 @@ def _resolve_search_collections(collection: str) -> list[str]:
     """Resolve user-facing `collection` arg to a list of real Qdrant names.
 
     Fan-out covers archive-* and scratch-*; memory-* is excluded.
+
+    Bare names (e.g. `frankenstein`) match across all search prefixes:
+    both `archive-frankenstein` and `scratch-frankenstein` are returned
+    if they exist. This keeps the call-site honest — a bare name means
+    "this topic, wherever it lives" — and avoids the silent-miss trap
+    where ingest_url writes to scratch-* but search_archives only
+    looked under archive-*.
     """
     names = [c.name for c in qdrant.get_collections().collections]
     if collection in ("", "all", "*"):
         return sorted(n for n in names if n.startswith(SEARCH_PREFIXES))
     if collection.startswith(SEARCH_PREFIXES):
         return [collection]
-    # Back-compat: bare suffix defaults to archive prefix.
-    return [f"{ARCHIVE_PREFIX}{collection}"]
+    candidates = [f"{p}{collection}" for p in SEARCH_PREFIXES]
+    existing = [c for c in candidates if c in names]
+    return existing or candidates[:1]  # fall back to archive-<name> for back-compat
 
 
 def _scratch_collection_name(collection: str) -> str:
@@ -401,8 +409,11 @@ def search_archives(
 
     Args:
         query: Natural-language question or keywords.
-        collection: "all" (default), a full collection name, or a bare
-            suffix (defaults to the archive prefix for back-compat).
+        collection: "all" (default), a fully-qualified collection name
+            (e.g. `scratch-frankenstein`), or a bare topic name (e.g.
+            `frankenstein`) — bare names match across BOTH archive-* and
+            scratch-* prefixes, so a topic loaded via `ingest_url` is
+            findable without knowing which bucket it lives in.
         limit: Total chunks to return (capped at SCRIBE_MAX_LIMIT).
     """
     limit = max(1, min(limit, MAX_LIMIT))
